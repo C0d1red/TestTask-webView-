@@ -31,6 +31,8 @@ public class MainActivity extends AppCompatActivity {
     private String mCameraPhotoPath;
     private static final int INPUT_FILE_REQUEST_CODE = 1;
 
+    private static final String START_URL = "https://imgbb.com/";
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -173,7 +175,7 @@ public class MainActivity extends AppCompatActivity {
         if(preferences.contains("LAST_URL")){
             url = preferences.getString("LAST_URL", "");
         } else {
-            url = "https://imgbb.com/";
+            url = START_URL;
         }
         return url;
     }
