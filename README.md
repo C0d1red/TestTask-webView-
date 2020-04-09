@@ -5,5 +5,6 @@ Android WebView with uploading images.
 - En/Ru appName
 - Saving state after device rotate
 - Saving last url
-09.04.2020. 
-Bogomolov R.D.
+----------------------------------------
+-- 09.04.2020. 
+-- Bogomolov R.D.
