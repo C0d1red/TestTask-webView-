@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Test Application</string>
+    <string name="to_do_chooser">To do chooser</string>
+</resources>
