@@ -10,5 +10,4 @@ Android WebView with uploading images.
 - Deeplinks (comtestmyapplication://test)
 - Some modifications with redirected URLs
 ----------------------------------------
--- 12.04.2020. 
--- Bogomolov R.D.
+12.04.2020. Bogomolov R.D.
