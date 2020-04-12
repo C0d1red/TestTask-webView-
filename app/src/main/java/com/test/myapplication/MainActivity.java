@@ -1,5 +1,6 @@
 package com.test.myapplication;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -14,6 +15,14 @@ import android.app.Activity;
 import android.os.Build;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.widget.Toast;
+
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
+
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -32,13 +41,30 @@ public class MainActivity extends AppCompatActivity {
     private static final int INPUT_FILE_REQUEST_CODE = 1;
 
     private static final String START_URL = "https://imgbb.com/";
+    private static final String LAST_URL_KEY = "LAST_URL";
+    private static final String TASK_URL_KEY = "TASK_URL";
+
+    // Strings from database
+    private String secret;
+    private String splash_url;
+    private String task_url;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        preferences = getPreferences(MODE_PRIVATE);
+
         setWebViewSettings();
+
+        if(isHavingDefTask()){
+            // Load last URL or deeplink URL
+            webView.loadUrl(getUrl());
+            showCurrentUrl(webView.getUrl());
+        } else {
+            databaseActions();
+        }
     }
 
 
@@ -73,7 +99,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
-        saveLastUrl(webView.getUrl());
+        saveUrl(webView.getUrl());
     }
 
 
@@ -93,8 +119,32 @@ public class MainActivity extends AppCompatActivity {
         webView.getSettings().setCacheMode(WebSettings.LOAD_NO_CACHE);
         webView.getSettings().setAllowFileAccess(true);
         webView.getSettings().supportZoom();
-        webView.loadUrl(getUrl());
-        webView.setWebViewClient(new WebViewClient());
+
+        webView.setWebViewClient(new WebViewClient(){
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                // Catching redirect
+
+                showCurrentUrl(url);
+
+                if(url.contains("main")){
+                    // Open second activity
+                    openTextActivity(secret);
+                } else if(url.contains("money")){
+                    // Save default task_url
+                    saveTaskUrl(task_url);
+
+                    // Check deeplink
+                    if(getIntent() != null && getIntent().getData() != null) {
+                        task_url = getTaskUrl();
+                    }
+                    webView.loadUrl(task_url);
+                    showCurrentUrl(webView.getUrl());
+                }
+
+                return false;
+            }
+        });
 
         webView.setWebChromeClient(new WebChromeClient(){
             public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> filePath, WebChromeClient.FileChooserParams fileChooserParams) {
@@ -161,23 +211,109 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    private void saveLastUrl(String lastUrl){
-        preferences = getPreferences(MODE_PRIVATE);
+    private void saveUrl(String url){
         SharedPreferences.Editor editor = preferences.edit();
-        editor.putString("LAST_URL", lastUrl);
+        editor.putString(LAST_URL_KEY, url);
         editor.apply();
     }
 
 
     private String getUrl(){
         String url = "";
-        preferences = getPreferences(MODE_PRIVATE);
-        if(preferences.contains("LAST_URL")){
-            url = preferences.getString("LAST_URL", "");
+
+        // Check deeplink
+        if(getIntent() != null && getIntent().getData() != null) {
+            // Get taskUrl from database with variable from deeplink
+            url = getTaskUrl();
         } else {
-            url = START_URL;
+            // Checking last url
+            if(preferences.contains(LAST_URL_KEY)){
+                url = preferences.getString(LAST_URL_KEY, "");
+            } else {
+                url = START_URL;
+            }
         }
+
         return url;
+    }
+
+
+    private String getTaskUrl(){
+        String task_url = "";
+
+        if(preferences.contains(TASK_URL_KEY)) {
+            // We having task url and can continue
+            task_url = preferences.getString(TASK_URL_KEY, "");
+
+            // Replace url-parameter with new value from deeplink
+            Uri uri = getIntent().getData();
+            String newDeep = uri.getQueryParameter("deep");
+            task_url = task_url.replace("{deep}", newDeep);
+        } else {
+            // Error
+            task_url = START_URL;
+        }
+
+        return  task_url;
+    }
+
+
+    private boolean isHavingDefTask(){
+        boolean isHaving = false;
+        if(preferences.contains(TASK_URL_KEY)) {
+            isHaving = true;
+        }
+        return isHaving;
+
+    }
+
+
+    private void openTextActivity(String text){
+        Intent intent = new Intent(this, TextActivity.class);
+
+        // Transfer text from database to the Text Activity
+        intent.putExtra("TEXT_TO_SET", text);
+
+        startActivity(intent);
+    }
+
+
+    // Make some actions with database
+    private void databaseActions(){
+        DatabaseReference database = FirebaseDatabase.getInstance().getReference();
+        database.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+
+                // Get strings from database
+                secret = dataSnapshot.child("secret").getValue().toString();
+                splash_url = dataSnapshot.child("splash_url").getValue().toString();
+                task_url = dataSnapshot.child("task_url").getValue().toString();
+
+                // Redirecting to splash_url
+                webView.loadUrl(splash_url);
+                showCurrentUrl(webView.getUrl());
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+                Toast.makeText(MainActivity.this, "Database are unavailable", Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+
+    private void saveTaskUrl(String task_url){
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putString(TASK_URL_KEY, task_url);
+        editor.apply();
+    }
+
+
+    // Show toast with current url
+    private void showCurrentUrl(String currentUrl){
+        String text = getString(R.string.current_url) + " " + currentUrl;
+        Toast.makeText(this, text, Toast.LENGTH_SHORT).show();
     }
 
 

@@ -5,6 +5,10 @@ Android WebView with uploading images.
 - En/Ru appName
 - Saving state after device rotate
 - Saving last url
+- Firebase Analytics, Firebase Database, Firebase Crashlytics
+- Facebook Analytics
+- Deeplinks (comtestmyapplication://test)
+- Some modifications with redirected URLs
 ----------------------------------------
--- 09.04.2020. 
+-- 12.04.2020. 
 -- Bogomolov R.D.
